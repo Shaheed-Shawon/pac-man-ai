@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man Adversarial Game - Minimax vs Alpha-Beta</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(233, 69, 96, 0.1);
+            border-radius: 15px;
+            border: 1px solid #e94560;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ffff00;
+            text-shadow: 0 0 20px #ffff00;
+        }
+
+        .header h2 {
+            font-size: 1.2rem;
+            color: #e94560;
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .game-section {
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #16213e;
+        }
+
+        .game-board {
+            text-align: center;
+        }
+
+        .game-status {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            min-height: 30px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(15, 52, 96, 0.5);
+        }
+
+        .win { color: #4caf50; }
+        .lose { color: #f44336; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(6, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 3px;
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 0 auto;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #16213e;
+            border: 2px solid #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .wall {
+            background: linear-gradient(45deg, #e94560, #ff6b6b) !important;
+            border: 2px solid #ff8a95;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .pellet::before {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ffd700, #ffed4a);
+            border-radius: 50%;
+            box-shadow: 0 0 10px #ffd700;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .pacman {
+            color: #ffff00;
+            font-weight: bold;
+            text-shadow: 0 0 15px #ffff00;
+            animation: bounce 0.5s ease;
+        }
+
+        .ghost {
+            font-size: 32px;
+            animation: ghostFloat 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes ghostFloat {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-3px); }
+        }
+
+        .controls {
+            width: 350px;
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #16213e;
+        }
+
+        .section {
+            background: rgba(15, 52, 96, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        .section h3 {
+            color: #e94560;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .instructions {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .instructions strong {
+            color: #ffff00;
+        }
+
+        .algorithm-selector select {
+            width: 100%;
+            padding: 10px;
+            background: #0f3460;
+            color: #fff;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .algorithm-selector select:focus {
+            outline: none;
+            border-color: #ffff00;
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.3);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #ffff00;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .buttons button {
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .buttons button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #ff6b6b, #e94560);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        .buttons button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .buttons button.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .game-log {
+            background: rgba(15, 52, 96, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            height: 180px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px 8px;
+            border-left: 3px solid #e94560;
+            background: rgba(233, 69, 96, 0.1);
+            border-radius: 4px;
+            line-height: 1.3;
+        }
+
+        .comparison-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #16213e;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(233, 69, 96, 0.2);
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: rgba(15, 52, 96, 0.3);
+        }
+
+        .comparison-table tr:hover {
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .algorithm-name {
+            font-weight: bold;
+            color: #ffff00;
+        }
+
+        .performance-metric {
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .game-area {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .controls {
+                width: 100%;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .grid {
+                grid-template-columns: repeat(6, 50px);
+                grid-template-rows: repeat(6, 50px);
+            }
+            
+            .cell {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+        }
+
+        /* Scrollbar Styling */
+        .game-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .game-log::-webkit-scrollbar-track {
+            background: rgba(15, 52, 96, 0.3);
+            border-radius: 3px;
+        }
+
+        .game-log::-webkit-scrollbar-thumb {
+            background: #e94560;
+            border-radius: 3px;
+        }
+
+        .game-log::-webkit-scrollbar-thumb:hover {
+            background: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 PAC-MAN ADVERSARIAL AI</h1>
+            <h2>Minimax vs Alpha-Beta Pruning Performance Comparison</h2>
+        </div>
+
+        <div class="game-area">
+            <div class="game-section">
+                <div class="game-status" id="gameStatus">Choose algorithm and start new game</div>
+                <div class="grid" id="gameGrid"></div>
+            </div>
+
+            <div class="controls">
+                <div class="section instructions">
+                    <h3>🕹️ Game Controls</h3>
+                    <strong>Movement:</strong> Arrow keys or WASD<br>
+                    <strong>Goal:</strong> Collect all yellow pellets<br>
+                    <strong>Avoid:</strong> The AI-controlled ghost 👻<br>
+                    <strong>AI:</strong> Uses Minimax or Alpha-Beta pruning
+                </div>
+
+                <div class="section algorithm-selector">
+                    <h3>🤖 AI Algorithm</h3>
+                    <select id="algorithmSelect">
+                        <option value="minimax">Minimax (Full Search)</option>
+                        <option value="alphabeta">Alpha-Beta Pruning (Optimized)</option>
+                    </select>
+                </div>
+
+                <div class="section stats">
+                    <h3>📊 Performance Metrics</h3>
+                    <div class="stat-row">
+                        <span>Nodes Explored:</span>
+                        <span class="stat-value" id="nodesExplored">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Execution Time:</span>
+                        <span class="stat-value" id="executionTime">0ms</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Search Depth:</span>
+                        <span class="stat-value" id="depthReached">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Current Score:</span>
+                        <span class="stat-value" id="gameScore">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Pellets Left:</span>
+                        <span class="stat-value" id="pelletsLeft">0</span>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button id="newGameBtn">New Game</button>
+                    <button id="aiMoveBtn" disabled>AI Move</button>
+                    <button id="autoPlayBtn">Auto Play</button>
+                    <button id="resetStatsBtn">Reset Stats</button>
+                </div>
+
+                <div class="section">
+                    <h3>📝 Game Log</h3>
+                    <div class="game-log" id="gameLog">
+                        <div class="log-entry">System initialized. Ready to start!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Algorithm</th>
+                    <th>Total Nodes</th>
+                    <th>Avg Time/Move</th>
+                    <th>Games Played</th>
+                    <th>Efficiency Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="algorithm-name">Minimax</td>
+                    <td id="minimaxNodes">0</td>
+                    <td id="minimaxTime">0ms</td>
+                    <td id="minimaxGames">0</td>
+                    <td id="minimaxEfficiency">-</td>
+                </tr>
+                <tr>
+                    <td class="algorithm-name">Alpha-Beta</td>
+                    <td id="alphabetaNodes">0</td>
+                    <td id="alphabetaTime">0ms</td>
+                    <td id="alphabetaGames">0</td>
+                    <td id="alphabetaEfficiency">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        class PacManAdversarialGame {
+            constructor() {
+                // Game configuration
+                this.BOARD_SIZE = 6;
+                this.MAX_DEPTH = 5;
+                this.WALL_POSITIONS = [[1,1], [1,4], [2,2], [3,3], [4,1], [4,4]];
+                
+                // Game state
+                this.board = [];
+                this.pacmanPos = { x: 0, y: 0 };
+                this.ghostPos = { x: 5, y: 5 };
+                this.pellets = new Set();
+                this.score = 0;
+                this.gameOver = false;
+                this.winner = null;
+                this.currentAlgorithm = 'minimax';
+                this.autoPlayInterval = null;
+                this.isProcessingMove = false;
+                
+                // AI memory to avoid repetitive moves
+                this.ghostMoveHistory = [];
+                this.lastGhostPos = null;
+                this.stuckCounter = 0;
+                
+                // Performance tracking
+                this.stats = {
+                    minimax: { totalNodes: 0, totalTime: 0, games: 0, moves: 0 },
+                    alphabeta: { totalNodes: 0, totalTime: 0, games: 0, moves: 0 }
+                };
+                
+                this.initializeGame();
+                this.setupEventListeners();
+                this.updateDisplay();
+            }
+
+            initializeGame() {
+                // Create empty board
+                this.board = Array(this.BOARD_SIZE).fill().map(() => Array(this.BOARD_SIZE).fill(0));
+                
+                // Place walls
+                this.WALL_POSITIONS.forEach(([x, y]) => {
+                    if (x < this.BOARD_SIZE && y < this.BOARD_SIZE) {
+                        this.board[y][x] = 1; // 1 = wall
+                    }
+                });
+
+                // Reset positions
+                this.pacmanPos = { x: 0, y: 0 };
+                this.ghostPos = { x: 5, y: 5 };
+
+                // Clear starting positions
+                this.board[this.pacmanPos.y][this.pacmanPos.x] = 0;
+                this.board[this.ghostPos.y][this.ghostPos.x] = 0;
+
+                // Place pellets on all empty spaces
+                this.pellets.clear();
+                for (let y = 0; y < this.BOARD_SIZE; y++) {
+                    for (let x = 0; x < this.BOARD_SIZE; x++) {
+                        if (this.board[y][x] === 0 && 
+                            !(x === this.pacmanPos.x && y === this.pacmanPos.y) &&
+                            !(x === this.ghostPos.x && y === this.ghostPos.y)) {
+                            this.pellets.add(`${x},${y}`);
+                            this.board[y][x] = 2; // 2 = pellet
+                        }
+                    }
+                }
+
+                // Reset game state
+                this.gameOver = false;
+                this.winner = null;
+                this.score = 0;
+                this.isProcessingMove = false;
+                
+                // Reset AI memory
+                this.ghostMoveHistory = [];
+                this.lastGhostPos = null;
+                this.stuckCounter = 0;
+            }
+
+            setupEventListeners() {
+                // Button events
+                document.getElementById('newGameBtn').addEventListener('click', () => this.newGame());
+                document.getElementById('aiMoveBtn').addEventListener('click', () => this.makeAIMove());
+                document.getElementById('autoPlayBtn').addEventListener('click', () => this.toggleAutoPlay());
+                document.getElementById('resetStatsBtn').addEventListener('click', () => this.resetStats());
+                
+                // Algorithm selection
+                document.getElementById('algorithmSelect').addEventListener('change', (e) => {
+                    this.currentAlgorithm = e.target.value;
+                    this.log(`Switched to ${this.currentAlgorithm.toUpperCase()} algorithm`);
+                });
+
+                // Keyboard controls
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameOver || this.isProcessingMove) return;
+                    
+                    const keyMoves = {
+                        'ArrowUp': { x: 0, y: -1 }, 'w': { x: 0, y: -1 }, 'W': { x: 0, y: -1 },
+                        'ArrowDown': { x: 0, y: 1 }, 's': { x: 0, y: 1 }, 'S': { x: 0, y: 1 },
+                        'ArrowLeft': { x: -1, y: 0 }, 'a': { x: -1, y: 0 }, 'A': { x: -1, y: 0 },
+                        'ArrowRight': { x: 1, y: 0 }, 'd': { x: 1, y: 0 }, 'D': { x: 1, y: 0 }
+                    };
+
+                    if (keyMoves[e.key]) {
+                        e.preventDefault();
+                        this.movePacman(keyMoves[e.key]);
+                    }
+                });
+            }
+
+            newGame() {
+                this.stopAutoPlay();
+                this.initializeGame();
+                this.updateDisplay();
+                this.log("🎮 New game started! Use WASD or arrow keys to move Pac-Man");
+                document.getElementById('aiMoveBtn').disabled = false;
+            }
+
+            movePacman(direction) {
+                if (this.gameOver || this.isProcessingMove) return false;
+                
+                const newX = this.pacmanPos.x + direction.x;
+                const newY = this.pacmanPos.y + direction.y;
+
+                if (this.isValidMove(newX, newY)) {
+                    this.pacmanPos.x = newX;
+                    this.pacmanPos.y = newY;
+
+                    // Check for pellet collection
+                    const pelletKey = `${newX},${newY}`;
+                    if (this.pellets.has(pelletKey)) {
+                        this.pellets.delete(pelletKey);
+                        this.board[newY][newX] = 0;
+                        this.score += 10;
+                        this.log(`🟡 Pac-Man collected pellet! Score: ${this.score}`);
+                    }
+
+                    // Check for game ending conditions
+                    this.checkGameOver();
+                    this.updateDisplay();
+                    return true;
+                }
+                return false;
+            }
+
+            isValidMove(x, y) {
+                return x >= 0 && x < this.BOARD_SIZE && 
+                       y >= 0 && y < this.BOARD_SIZE && 
+                       this.board[y][x] !== 1; // Not a wall
+            }
+
+            getPossibleMoves(pos) {
+                const directions = [
+                    { x: pos.x + 1, y: pos.y },
+                    { x: pos.x - 1, y: pos.y },
+                    { x: pos.x, y: pos.y + 1 },
+                    { x: pos.x, y: pos.y - 1 }
+                ];
+                
+                return directions.filter(move => this.isValidMove(move.x, move.y));
+            }
+
+            manhattanDistance(pos1, pos2) {
+                return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+            }
+
+            // Calculate shortest path length using BFS
+            getPathLength(from, to) {
+                const queue = [{ pos: from, dist: 0 }];
+                const visited = new Set([`${from.x},${from.y}`]);
+                
+                while (queue.length > 0) {
+                    const { pos, dist } = queue.shift();
+                    
+                    if (pos.x === to.x && pos.y === to.y) {
+                        return dist;
+                    }
+                    
+                    const moves = this.getPossibleMoves(pos);
+                    for (let move of moves) {
+                        const key = `${move.x},${move.y}`;
+                        if (!visited.has(key)) {
+                            visited.add(key);
+                            queue.push({ pos: move, dist: dist + 1 });
+                        }
+                    }
+                }
+                
+                return 999; // No path found
+            }
+
+            // Check if position is being repeated
+            isRepetitiveMove(pos) {
+                const posKey = `${pos.x},${pos.y}`;
+                const recentMoves = this.ghostMoveHistory.slice(-6);
+                const occurrences = recentMoves.filter(m => m === posKey).length;
+                return occurrences >= 3; // Position repeated 3+ times in last 6 moves
+            }
+
+            evaluatePosition() {
+                // Terminal state checks
+                if (this.pacmanPos.x === this.ghostPos.x && this.pacmanPos.y === this.ghostPos.y) {
+                    return 1000; // Ghost wins
+                }
+                
+                if (this.pellets.size === 0) {
+                    return -1000; // Pac-Man wins
+                }
+
+                // Heuristic evaluation
+                let evaluation = 0;
+                
+                // Use actual path distance instead of Manhattan distance for better pathfinding
+                const pathDistance = this.getPathLength(this.ghostPos, this.pacmanPos);
+                
+                // Ghost strongly prefers to be closer to Pac-Man (weighted heavily)
+                evaluation -= pathDistance * 25;
+                
+                // Penalize being far from Pac-Man exponentially when very far
+                if (pathDistance > 3) {
+                    evaluation -= (pathDistance - 3) * 10;
+                }
+                
+                // Prefer cutting off Pac-Man's escape routes
+                const pacmanMoves = this.getPossibleMoves(this.pacmanPos);
+                const ghostMoves = this.getPossibleMoves(this.ghostPos);
+                evaluation -= pacmanMoves.length * 8; // Fewer escape routes for Pac-Man is good
+                evaluation += ghostMoves.length * 3; // More options for ghost is good
+                
+                // Prefer positions that block Pac-Man from pellets
+                let nearestPelletDist = 999;
+                this.pellets.forEach(pelletKey => {
+                    const [px, py] = pelletKey.split(',').map(Number);
+                    const dist = this.manhattanDistance(this.pacmanPos, { x: px, y: py });
+                    nearestPelletDist = Math.min(nearestPelletDist, dist);
+                });
+                
+                const ghostToPelletDist = nearestPelletDist > 0 ? 
+                    this.manhattanDistance(this.ghostPos, this.pacmanPos) : 999;
+                
+                // Intercept Pac-Man's path to pellets
+                if (nearestPelletDist < pathDistance) {
+                    evaluation -= 15;
+                }
+                
+                // Penalty for corner positions (but less severe)
+                const isCorner = (this.ghostPos.x === 0 || this.ghostPos.x === this.BOARD_SIZE-1) && 
+                                (this.ghostPos.y === 0 || this.ghostPos.y === this.BOARD_SIZE-1);
+                if (isCorner && pathDistance > 2) {
+                    evaluation -= 12;
+                }
+                
+                // Penalty for being stuck at edges when Pac-Man is not nearby
+                const isEdge = this.ghostPos.x === 0 || this.ghostPos.x === this.BOARD_SIZE-1 ||
+                              this.ghostPos.y === 0 || this.ghostPos.y === this.BOARD_SIZE-1;
+                if (isEdge && pathDistance > 2) {
+                    evaluation -= 6;
+                }
+                
+                // Strong penalty for repetitive positions
+                if (this.isRepetitiveMove(this.ghostPos)) {
+                    evaluation -= 40;
+                }
+                
+                // Prefer aggressive play (being in same quadrant as Pac-Man)
+                const sameQuadrantX = (this.ghostPos.x < this.BOARD_SIZE/2) === (this.pacmanPos.x < this.BOARD_SIZE/2);
+                const sameQuadrantY = (this.ghostPos.y < this.BOARD_SIZE/2) === (this.pacmanPos.y < this.BOARD_SIZE/2);
+                if (sameQuadrantX && sameQuadrantY) {
+                    evaluation += 10;
+                }
+                
+                return evaluation;
+            }
+
+            // MINIMAX ALGORITHM IMPLEMENTATION
+            minimax(depth, isMaximizingPlayer, stats) {
+                stats.nodesExplored++;
+                
+                // Check for terminal conditions
+                const isCollision = (this.pacmanPos.x === this.ghostPos.x && this.pacmanPos.y === this.ghostPos.y);
+                const allPelletsCollected = this.pellets.size === 0;
+                
+                if (depth === 0 || isCollision || allPelletsCollected) {
+                    return this.evaluatePosition();
+                }
+
+                if (isMaximizingPlayer) {
+                    // Ghost turn (maximizing player)
+                    let maxEvaluation = -Infinity;
+                    const ghostMoves = this.getPossibleMoves(this.ghostPos);
+                    
+                    if (ghostMoves.length === 0) return this.evaluatePosition();
+                    
+                    for (let move of ghostMoves) {
+                        // Save current state
+                        const originalGhostPos = { ...this.ghostPos };
+                        
+                        // Make move
+                        this.ghostPos = move;
+                        
+                        // Recursive call
+                        const evaluation = this.minimax(depth - 1, false, stats);
+                        maxEvaluation = Math.max(maxEvaluation, evaluation);
+                        
+                        // Restore state
+                        this.ghostPos = originalGhostPos;
+                    }
+                    return maxEvaluation;
+                    
+                } else {
+                    // Pac-Man turn (minimizing player)
+                    let minEvaluation = Infinity;
+                    const pacmanMoves = this.getPossibleMoves(this.pacmanPos);
+                    
+                    if (pacmanMoves.length === 0) return this.evaluatePosition();
+                    
+                    // Consider all moves for more realistic Pac-Man behavior
+                    for (let move of pacmanMoves) {
+                        // Save current state
+                        const originalPacmanPos = { ...this.pacmanPos };
+                        const originalPellets = new Set(this.pellets);
+                        const originalScore = this.score;
+                        
+                        // Make move
+                        this.pacmanPos = move;
+                        const pelletKey = `${move.x},${move.y}`;
+                        if (this.pellets.has(pelletKey)) {
+                            this.pellets.delete(pelletKey);
+                            this.score += 10;
+                        }
+                        
+                        // Recursive call
+                        const evaluation = this.minimax(depth - 1, true, stats);
+                        minEvaluation = Math.min(minEvaluation, evaluation);
+                        
+                        // Restore state
+                        this.pacmanPos = originalPacmanPos;
+                        this.pellets = originalPellets;
+                        this.score = originalScore;
+                    }
+                    return minEvaluation;
+                }
+            }
+
+            // ALPHA-BETA PRUNING ALGORITHM IMPLEMENTATION
+            alphaBeta(depth, alpha, beta, isMaximizingPlayer, stats) {
+                stats.nodesExplored++;
+                
+                // Check for terminal conditions
+                const isCollision = (this.pacmanPos.x === this.ghostPos.x && this.pacmanPos.y === this.ghostPos.y);
+                const allPelletsCollected = this.pellets.size === 0;
+                
+                if (depth === 0 || isCollision || allPelletsCollected) {
+                    return this.evaluatePosition();
+                }
+
+                if (isMaximizingPlayer) {
+                    // Ghost turn (maximizing player)
+                    let maxEvaluation = -Infinity;
+                    const ghostMoves = this.getPossibleMoves(this.ghostPos);
+                    
+                    if (ghostMoves.length === 0) return this.evaluatePosition();
+                    
+                    for (let move of ghostMoves) {
+                        // Save current state
+                        const originalGhostPos = { ...this.ghostPos };
+                        
+                        // Make move
+                        this.ghostPos = move;
+                        
+                        // Recursive call
+                        const evaluation = this.alphaBeta(depth - 1, alpha, beta, false, stats);
+                        maxEvaluation = Math.max(maxEvaluation, evaluation);
+                        alpha = Math.max(alpha, evaluation);
+                        
+                        // Restore state
+                        this.ghostPos = originalGhostPos;
+                        
+                        // Alpha-Beta pruning
+                        if (beta <= alpha) {
+                            stats.prunings = (stats.prunings || 0) + 1;
+                            break; // Beta cutoff
+                        }
+                    }
+                    return maxEvaluation;
+                    
+                } else {
+                    // Pac-Man turn (minimizing player)
+                    let minEvaluation = Infinity;
+                    const pacmanMoves = this.getPossibleMoves(this.pacmanPos);
+                    
+                    if (pacmanMoves.length === 0) return this.evaluatePosition();
+                    
+                    // Consider all moves for better AI prediction
+                    for (let move of pacmanMoves) {
+                        // Save current state
+                        const originalPacmanPos = { ...this.pacmanPos };
+                        const originalPellets = new Set(this.pellets);
+                        const originalScore = this.score;
+                        
+                        // Make move
+                        this.pacmanPos = move;
+                        const pelletKey = `${move.x},${move.y}`;
+                        if (this.pellets.has(pelletKey)) {
+                            this.pellets.delete(pelletKey);
+                            this.score += 10;
+                        }
+                        
+                        // Recursive call
+                        const evaluation = this.alphaBeta(depth - 1, alpha, beta, true, stats);
+                        minEvaluation = Math.min(minEvaluation, evaluation);
+                        beta = Math.min(beta, evaluation);
+                        
+                        // Restore state
+                        this.pacmanPos = originalPacmanPos;
+                        this.pellets = originalPellets;
+                        this.score = originalScore;
+                        
+                        // Alpha-Beta pruning
+                        if (beta <= alpha) {
+                            stats.prunings = (stats.prunings || 0) + 1;
+                            break; // Alpha cutoff
+                        }
+                    }
+                    return minEvaluation;
+                }
+            }
+
+            makeAIMove() {
+                if (this.gameOver || this.isProcessingMove) return;
+
+                this.isProcessingMove = true;
+                const startTime = performance.now();
+                const stats = { nodesExplored: 0, prunings: 0 };
+                
+                const ghostMoves = this.getPossibleMoves(this.ghostPos);
+                if (ghostMoves.length === 0) {
+                    this.isProcessingMove = false;
+                    return;
+                }
+
+                let bestMoves = [];
+                let bestValue = -Infinity;
+
+                // Evaluate each possible ghost move
+                for (let move of ghostMoves) {
+                    const originalPos = { ...this.ghostPos };
+                    this.ghostPos = move;
+                    
+                    let value;
+                    if (this.currentAlgorithm === 'minimax') {
+                        value = this.minimax(this.MAX_DEPTH - 1, false, stats);
+                    } else {
+                        value = this.alphaBeta(this.MAX_DEPTH - 1, -Infinity, Infinity, false, stats);
+                    }
+                    
+                    // Apply penalty for repetitive moves
+                    if (this.isRepetitiveMove(move)) {
+                        value -= 50;
+                    }
+                    
+                    // Apply small penalty if moving back to last position
+                    if (this.lastGhostPos && 
+                        move.x === this.lastGhostPos.x && 
+                        move.y === this.lastGhostPos.y) {
+                        value -= 15;
+                    }
+                    
+                    this.ghostPos = originalPos;
+                    
+                    if (value > bestValue) {
+                        bestValue = value;
+                        bestMoves = [move];
+                    } else if (value === bestValue) {
+                        bestMoves.push(move); // Keep track of equally good moves
+                    }
+                }
+
+                // Choose from best moves (with slight randomization to break ties)
+                let bestMove;
+                if (bestMoves.length > 1) {
+                    // Prefer moves that are NOT repetitive when there are ties
+                    const nonRepetitive = bestMoves.filter(m => !this.isRepetitiveMove(m));
+                    if (nonRepetitive.length > 0) {
+                        bestMove = nonRepetitive[Math.floor(Math.random() * nonRepetitive.length)];
+                    } else {
+                        bestMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+                    }
+                } else {
+                    bestMove = bestMoves[0];
+                }
+
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+
+                // Update statistics
+                this.stats[this.currentAlgorithm].totalNodes += stats.nodesExplored;
+                this.stats[this.currentAlgorithm].totalTime += executionTime;
+                this.stats[this.currentAlgorithm].moves++;
+
+                // Update move history
+                this.lastGhostPos = { ...this.ghostPos };
+                this.ghostMoveHistory.push(`${bestMove.x},${bestMove.y}`);
+                if (this.ghostMoveHistory.length > 10) {
+                    this.ghostMoveHistory.shift(); // Keep only last 10 moves
+                }
+
+                // Execute the best move
+                this.ghostPos = bestMove;
+
+                // Check for game over
+                this.checkGameOver();
+                this.updatePerformanceDisplay(stats.nodesExplored, executionTime, this.MAX_DEPTH, stats.prunings);
+                this.updateDisplay();
+                
+                // Log the move
+                this.log(`🤖 ${this.currentAlgorithm.toUpperCase()}: Ghost moved to (${bestMove.x}, ${bestMove.y}) - ${stats.nodesExplored} nodes, ${executionTime.toFixed(2)}ms`);
+                
+                if (stats.prunings > 0) {
+                    this.log(`✂️ Alpha-Beta eliminated ${stats.prunings} branches`);
+                }
+
+                this.isProcessingMove = false;
+            }
+
+            checkGameOver() {
+                // Check collision
+                if (this.pacmanPos.x === this.ghostPos.x && this.pacmanPos.y === this.ghostPos.y) {
+                    this.gameOver = true;
+                    this.winner = 'ghost';
+                    this.stats[this.currentAlgorithm].games++;
+                    this.log("👻 GAME OVER! Ghost caught Pac-Man!");
+                    document.getElementById('aiMoveBtn').disabled = true;
+                    this.stopAutoPlay();
+                    return;
+                }
+
+                // Check win condition
+                if (this.pellets.size === 0) {
+                    this.gameOver = true;
+                    this.winner = 'pacman';
+                    this.log("🎉 PAC-MAN WINS! All pellets collected!");
+                    document.getElementById('aiMoveBtn').disabled = true;
+                    this.stopAutoPlay();
+                    return;
+                }
+            }
+
+            toggleAutoPlay() {
+                if (this.autoPlayInterval) {
+                    this.stopAutoPlay();
+                } else {
+                    this.startAutoPlay();
+                }
+            }
+
+            startAutoPlay() {
+                if (this.gameOver) {
+                    this.newGame();
+                }
+                
+                document.getElementById('autoPlayBtn').textContent = 'Stop Auto';
+                this.log('🔄 Auto-play started');
+                
+                this.autoPlayInterval = setInterval(() => {
+                    if (this.gameOver || this.isProcessingMove) {
+                        if (this.gameOver) {
+                            this.stopAutoPlay();
+                        }
+                        return;
+                    }
+
+                    // Smart Pac-Man move (not completely random)
+                    const pacmanMoves = this.getPossibleMoves(this.pacmanPos);
+                    if (pacmanMoves.length > 0) {
+                        let bestMove = pacmanMoves[0];
+                        let bestScore = -Infinity;
+                        
+                        for (let move of pacmanMoves) {
+                            let score = Math.random() * 20; // Base randomness
+                            
+                            // Prefer pellet collection
+                            const pelletKey = `${move.x},${move.y}`;
+                            if (this.pellets.has(pelletKey)) {
+                                score += 100;
+                            }
+                            
+                            // Prefer distance from ghost
+                            const distToGhost = this.manhattanDistance(move, this.ghostPos);
+                            score += distToGhost * 15;
+                            
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMove = move;
+                            }
+                        }
+                        
+                        this.movePacman({ 
+                            x: bestMove.x - this.pacmanPos.x, 
+                            y: bestMove.y - this.pacmanPos.y 
+                        });
+                    }
+
+                    // AI move after short delay
+                    if (!this.gameOver && !this.isProcessingMove) {
+                        setTimeout(() => {
+                            if (!this.gameOver && !this.isProcessingMove) {
+                                this.makeAIMove();
+                            }
+                        }, 500);
+                    }
+                }, 1200);
+            }
+
+            stopAutoPlay() {
+                if (this.autoPlayInterval) {
+                    clearInterval(this.autoPlayInterval);
+                    this.autoPlayInterval = null;
+                    document.getElementById('autoPlayBtn').textContent = 'Auto Play';
+                    this.log('⏹️ Auto-play stopped');
+                }
+            }
+
+            updateDisplay() {
+                const grid = document.getElementById('gameGrid');
+                grid.innerHTML = '';
+
+                // Render game board
+                for (let y = 0; y < this.BOARD_SIZE; y++) {
+                    for (let x = 0; x < this.BOARD_SIZE; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+
+                        // Cell type styling
+                        if (this.board[y][x] === 1) {
+                            cell.classList.add('wall');
+                        } else if (this.pellets.has(`${x},${y}`)) {
+                            cell.classList.add('pellet');
+                        }
+
+                        // Character placement
+                        if (x === this.pacmanPos.x && y === this.pacmanPos.y) {
+                            cell.innerHTML = '🟡';
+                            cell.classList.add('pacman');
+                        } else if (x === this.ghostPos.x && y === this.ghostPos.y) {
+                            cell.innerHTML = '👻';
+                            cell.classList.add('ghost');
+                        }
+
+                        grid.appendChild(cell);
+                    }
+                }
+
+                // Update game status display
+                this.updateGameStatus();
+                
+                // Update performance metrics
+                document.getElementById('gameScore').textContent = this.score;
+                document.getElementById('pelletsLeft').textContent = this.pellets.size;
+                
+                // Update comparison table
+                this.updateComparisonTable();
+            }
+
+            updateGameStatus() {
+                const statusEl = document.getElementById('gameStatus');
+                
+                if (this.gameOver) {
+                    if (this.winner === 'ghost') {
+                        statusEl.textContent = '👻 Ghost Wins! - Game Over';
+                        statusEl.className = 'game-status lose';
+                    } else if (this.winner === 'pacman') {
+                        statusEl.textContent = '🎉 Pac-Man Wins! - Victory!';
+                        statusEl.className = 'game-status win';
+                    }
+                } else {
+                    statusEl.textContent = `🎮 Playing - Score: ${this.score} | Pellets: ${this.pellets.size}`;
+                    statusEl.className = 'game-status';
+                }
+            }
+
+            updatePerformanceDisplay(nodes, time, depth, prunings = 0) {
+                document.getElementById('nodesExplored').textContent = nodes.toLocaleString();
+                document.getElementById('executionTime').textContent = `${time.toFixed(2)}ms`;
+                document.getElementById('depthReached').textContent = depth;
+            }
+
+            updateComparisonTable() {
+                ['minimax', 'alphabeta'].forEach(algo => {
+                    const stats = this.stats[algo];
+                    const avgTime = stats.moves > 0 ? (stats.totalTime / stats.moves).toFixed(2) : '0.00';
+                    const efficiency = stats.totalNodes > 0 && stats.moves > 0 ? 
+                        (1000 / (stats.totalNodes / stats.moves)).toFixed(1) : '-';
+                    
+                    document.getElementById(`${algo}Nodes`).textContent = stats.totalNodes.toLocaleString();
+                    document.getElementById(`${algo}Time`).textContent = `${avgTime}ms`;
+                    document.getElementById(`${algo}Games`).textContent = stats.games;
+                    
+                    const efficiencyEl = document.getElementById(`${algo}Efficiency`);
+                    efficiencyEl.textContent = efficiency;
+                    
+                    if (efficiency !== '-') {
+                        efficiencyEl.className = 'performance-metric';
+                    }
+                });
+            }
+
+            resetStats() {
+                this.stats = {
+                    minimax: { totalNodes: 0, totalTime: 0, games: 0, moves: 0 },
+                    alphabeta: { totalNodes: 0, totalTime: 0, games: 0, moves: 0 }
+                };
+                this.updateComparisonTable();
+                this.log("📊 Statistics reset to zero");
+            }
+
+            log(message) {
+                const logDiv = document.getElementById('gameLog');
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                
+                logDiv.appendChild(entry);
+                logDiv.scrollTop = logDiv.scrollHeight;
+                
+                // Limit log entries to prevent memory issues
+                if (logDiv.children.length > 100) {
+                    logDiv.removeChild(logDiv.firstChild);
+                }
+            }
+        }
+
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.game = new PacManAdversarialGame();
+            console.log('🎮 Pac-Man Adversarial Game Initialized');
+            console.log('📊 Compare Minimax vs Alpha-Beta Pruning performance');
+        });
+
+        // Expose game instance globally for debugging
+        window.startNewGame = () => window.game?.newGame();
+        window.makeAIMove = () => window.game?.makeAIMove();
+        window.getStats = () => window.game?.stats;
+    </script>
+</body>
+</html>
